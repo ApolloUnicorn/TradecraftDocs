@@ -13,7 +13,7 @@ Tradecraft is a permissionless decentralized exchange, open for integration by w
 {% hint style="warning" %}
 ## Dependencies
 
-Both of the integration options below require the DA Utility package version 0.12.5 (and/or up to 0.12.9). If you do not have these installed when making trades you will be unable to receive the returning tokens. Additionally you may be automatically put on a temporary blacklist to prevent further trades from being initiated. If you think you may have been blacklisted, [contact us](https://docs.tradecraft.fi/support/get-help).
+Both of the integration options below require the DA Utility package version 0.14.4. If you do not have it installed when making trades you will be unable to receive the incoming tokens. Additionally you may be automatically put on a temporary blacklist to prevent further trades from being initiated. If you think you may have been blacklisted, [contact us](https://docs.tradecraft.fi/support/get-help).
 {% endhint %}
 
 We offer two integration options, with the tradeoffs shown below:
