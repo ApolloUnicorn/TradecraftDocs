@@ -1,0 +1,106 @@
+$schema: https://api.gitbook.com/gitbook-docs.yaml
+site:
+  title: Tradecraft Docs
+  structure:
+    - type: section
+      key: section-5
+      title: Home
+      path: home
+      description: ""
+      icon: hand-wave
+      default: true
+      children:
+        - type: space
+          key: space-5
+          title: Home
+          path: home
+          default: true
+          content:
+            directory: ./home
+    - type: section
+      key: section-4
+      title: Using Tradecraft
+      path: using-tradecraft
+      description: Trade & provide liquidity. Most wallets supported.
+      icon: sailboat
+      children:
+        - type: space
+          key: space-4
+          title: Pool Addresses
+          path: magic-address
+          default: true
+          content:
+            directory: ./using-tradecraft/magic-address
+    - type: section-group
+      key: section-group-1
+      title: Build
+      icon: code
+      children:
+        - type: section
+          key: section-6
+          title: Integrations
+          path: integrations
+          description: Enable trading and liquidity operations in your apps.
+          icon: layer-plus
+          children:
+            - type: space
+              key: space-6
+              title: Integrations
+              path: integrations
+              default: true
+              content:
+                directory: ./integrations
+        - type: section
+          key: section-1
+          title: API
+          path: api
+          description: Discover pools, pricing and liquidity programmatically.
+          icon: message-code
+          children:
+            - type: space
+              key: space-1
+              title: HTTP API Docs
+              path: api-reference
+              default: true
+              content:
+                directory: ./api/api-reference
+    - type: section
+      key: section-7
+      title: Fees and Pricing
+      path: fees-and-pricing
+      icon: money-bill-wave
+      children:
+        - type: space
+          key: space-7
+          title: Fees and Pricing
+          path: untitled
+          default: true
+          content:
+            directory: ./fees-and-pricing/untitled
+    - type: section
+      key: section-3
+      title: Support
+      path: support
+      description: ""
+      icon: comments-question-check
+      children:
+        - type: space
+          key: space-3
+          title: Tradecraft
+          path: legal
+          default: true
+          content:
+            directory: ./support/legal
+    - type: section
+      key: section-2
+      title: Security
+      path: security
+      icon: shield
+      children:
+        - type: space
+          key: space-2
+          title: Security
+          path: security
+          default: true
+          content:
+            directory: ./security
