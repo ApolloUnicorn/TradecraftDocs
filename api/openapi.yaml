@@ -1,0 +1,1202 @@
+openapi: 3.0.3
+info:
+  title: Tradecraft AMM HTTP API
+  description: |
+    REST API for interacting with the Tradecraft Exchange.
+    Provides endpoints for querying pool information, getting trade quotes, and
+    calculating liquidity provider operations.
+  version: 1.28.0
+
+servers:
+  - url: https://api.tradecraft.fi/v1
+    description: Mainnet
+  - url: https://tradecraft.validator.test.canton.obsidian.systems/amm-http-api
+    description: Testnet
+  - url: https://tradecraft.validator.dev.canton.obsidian.systems/amm-http-api
+    description: Devnet
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Returns the health status of the API server.
+      operationId: getHealth
+      tags:
+        - Health
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /pools:
+    get:
+      summary: List all liquidity pools
+      description: Returns information about all available liquidity pools.
+      operationId: listPools
+      tags:
+        - Pools
+      responses:
+        "200":
+          description: List of liquidity pools
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListPoolsResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /ammid/{tokenA}/{tokenB}:
+    get:
+      summary: Get a liquidity pool's ID
+      description: Returns the liquidity pool identifier for a token pair.
+      operationId: getAmmId
+      tags:
+        - Pools
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Liquidity pool ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmmIdResponse"
+        "400":
+          description: Liquidity pool not found or invalid token names given
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /tokenA/{tokenA}/{tokenB}:
+    get:
+      summary: Get Token A information
+      description: Returns token information for the first token in the liquidity pool. Note that this is not always the first token in the pool name.
+      operationId: getTokenA
+      tags:
+        - Tokens
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Token A information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: AMM not found or token unknown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /tokenB/{tokenA}/{tokenB}:
+    get:
+      summary: Get Token B information
+      description: Returns token information for the second token in the pool. Note that this is not always the second token in the pool name.
+      operationId: getTokenB
+      tags:
+        - Tokens
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Token B information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: AMM not found or token unknown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /lpToken/{tokenA}/{tokenB}:
+    get:
+      summary: Get LP Token information
+      description: Returns instrument information for the liquidity provider token of the pool.
+      operationId: getLpToken
+      tags:
+        - Tokens
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: LP Token information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: LP token not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /inspect/{tokenA}/{tokenB}:
+    get:
+      summary: Get liquidity pool state
+      description: Returns detailed information about the liquidity pool state including holdings, supply, and the constant product K.
+      operationId: inspectAmm
+      tags:
+        - Pools
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Pool state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmmInspectResponse"
+        "400":
+          description: Pool not found or token unknown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /ratio/{tokenA}/{tokenB}:
+    get:
+      summary: Get price ratio
+      description: Returns the current price ratio of token B in terms of token A. Note that token A and token B do not always correlate to the first and second tokens in the pool name.
+      operationId: getRatio
+      tags:
+        - Prices
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Price ratio
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RatioResponse"
+        "400":
+          description: AMM not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /feeAmount/{tokenA}/{tokenB}:
+    get:
+      summary: Get fee amounts
+      description: Returns the liquidity provider fee and operator fee percentages for the pool.
+      operationId: getFeeAmount
+      tags:
+        - Fees
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Fee amounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeeAmountResponse"
+        "400":
+          description: Liquidity pool fees contract not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /tradeDiscountCap:
+    get:
+      summary: Get the Trade Discount Cap
+      description: |
+        Returns the Trade Discount Cap in USD. Trades whose USD size is at or
+        below this value qualify for the reduced swap fee. Integrations
+        can poll this endpoint to dynamically size their trades so they always
+        qualify for the fee rebate. See https://docs.tradecraft.fi/fees-and-pricing.
+      operationId: getTradeDiscountCap
+      tags:
+        - Fees
+      responses:
+        "200":
+          description: The Trade Discount Cap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TradeDiscountCapResponse"
+        "404":
+          description: Trade Discount Cap is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /physicalSettlementWhitelist:
+    get:
+      summary: List the physically settled tokens
+      description: |
+        Returns the token symbols the venue settles into a holding.
+        Swap output in any other token goes to a trading balance.
+      operationId: getPhysicalSettlementWhitelist
+      tags:
+        - Tokens
+      responses:
+        "200":
+          description: The physically settled tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PhysicalSettlementWhitelistResponse"
+
+  /quoteForFixedInput/{tokenA}/{tokenB}:
+    get:
+      summary: Get trade quote for fixed input
+      description: |
+        Calculate how much of token B the user will receive when providing a fixed amount of token A.
+        Uses the constant product formula with double-sided fees.
+         Note that token A and token B do not always correlate to the first and second tokens in the pool name.
+      operationId: getQuoteTradeFixedInput
+      tags:
+        - Quotes
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+        - name: givingAmount
+          in: query
+          required: true
+          description: The amount of token A the user is giving
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            exclusiveMinimum: true
+            example: 100.0
+      responses:
+        "200":
+          description: Trade quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteTradeFixedInputResponse"
+        "400":
+          description: Invalid parameters or AMM not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /quoteForFixedOutput/{tokenA}/{tokenB}:
+    get:
+      summary: Get trade quote for fixed output
+      description: |
+        Calculate how much of token A the user must provide to receive a fixed amount of token B.
+        Uses the constant product formula with double-sided fees.
+         Note that token A and token B do not always correlate to the first and second tokens in the pool name.
+      operationId: getQuoteTradeFixedOutput
+      tags:
+        - Quotes
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+        - name: gettingAmount
+          in: query
+          required: true
+          description: The amount of token B the user wants to receive
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            exclusiveMinimum: true
+            example: 50.0
+      responses:
+        "200":
+          description: Trade quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteTradeFixedOutputResponse"
+        "400":
+          description: Invalid parameters or AMM not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /quoteLPWithdrawal/{tokenA}/{tokenB}:
+    get:
+      summary: Get liquidity withdrawal quote
+      description: Calculate how much of each token the user will receive when redeeming LP tokens.
+      operationId: getQuoteLiquidityWithdrawal
+      tags:
+        - Liquidity
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+        - name: lpTokenAmount
+          in: query
+          required: true
+          description: The amount of LP tokens to redeem
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            exclusiveMinimum: true
+            example: 10.0
+      responses:
+        "200":
+          description: Liquidity withdrawal quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteLPWithdrawalResponse"
+        "400":
+          description: Invalid parameters or liquidity pool not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /quoteLPDeposit/{tokenA}/{tokenB}:
+    get:
+      summary: Get liquidity deposit quote
+      description: |
+        Calculate the maximum LP tokens that can be minted given the provided amounts of both instruments.
+        Returns the optimal deposit amounts maintaining the pool ratio.
+      operationId: getQuoteLiquidityDeposit
+      tags:
+        - Liquidity
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+        - name: instrument1Amount
+          in: query
+          required: true
+          description: The amount of instrument 1 available for deposit
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            example: 100.0
+        - name: instrument2Amount
+          in: query
+          required: true
+          description: The available amount of instrument 2 available for deposit
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            example: 200.0
+      responses:
+        "200":
+          description: Liquidity deposit quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteLPDepositResponse"
+        "400":
+          description: Invalid parameters or liquidity pool not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /yield/{tokenA}/{tokenB}:
+    get:
+      summary: Get pool yield/APY
+      description: |
+        Returns annualized percentage yield (APY) calculations for the pool across multiple time periods.
+        APY is calculated based on the growth of value per LP token (k / lpSupply) over time.
+        Requires Apollo DB connection for historical data; returns empty yield data if unavailable.
+      operationId: getPoolYield
+      tags:
+        - Liquidity
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Pool yield data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoolYieldResponse"
+        "400":
+          description: AMM not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /yield_history/{tokenA}/{tokenB}:
+    get:
+      summary: Get historical yield/APY over time
+      description: |
+        Returns an array of timestamped APY data points for the pool.
+        Each data point represents the annualized yield during that time interval,
+        calculated based on the growth of value per LP token (sqrt(k) / lpSupply).
+        Timestamps are aligned to interval boundaries (e.g., top of minute, top of hour, midnight).
+
+        Available windows:
+        - hour: 60 data points at 1-minute intervals
+        - day: 288 data points at 5-minute intervals
+        - week: 168 data points at 1-hour intervals
+
+        Requires Apollo DB connection for historical data.
+      operationId: getPoolYieldHistory
+      tags:
+        - Liquidity
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+        - name: window
+          in: query
+          required: true
+          description: The time window for the yield history
+          schema:
+            type: string
+            enum: ["hour", "day", "week"]
+            example: "day"
+      responses:
+        "200":
+          description: Historical yield data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoolYieldHistoryResponse"
+        "400":
+          description: AMM not found or invalid window
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /volume/{tokenA}/{tokenB}:
+    get:
+      summary: Get pool trading volume in USD
+      description: |
+        Returns USD-denominated trading volume for the pool across multiple time periods.
+        Volume is calculated by tracking changes in AMM reserves between consecutive states.
+        Each swap is converted to USD at the exchange rate that was active at the time of that swap.
+        USD conversion is performed using:
+        - Stablecoins (SBC, USDCx): 1:1 with USD
+        - CC (Canton Coin): Historical exchange rate from OpenMiningRound contracts via Scan ACS API
+        Returns an error if neither token can be converted to USD.
+      operationId: getPoolVolume
+      tags:
+        - Liquidity
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Pool volume data in USD
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoolVolumeResponse"
+        "400":
+          description: AMM not found or cannot calculate USD volume
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /volume_history/{tokenA}/{tokenB}:
+    get:
+      summary: Get historical trading volume over time
+      description: |
+        Returns an array of timestamped volume data points for the pool.
+        Each data point represents the USD-denominated trading volume during that time interval.
+        Timestamps are aligned to interval boundaries (e.g., top of minute, top of hour, midnight).
+
+        Available windows:
+        - hour: 60 data points at 1-minute intervals
+        - day: 288 data points at 5-minute intervals
+        - week: 168 data points at 1-hour intervals
+
+        Volume calculation uses the same methodology as /volume endpoint.
+      operationId: getPoolVolumeHistory
+      tags:
+        - Liquidity
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+        - name: window
+          in: query
+          required: true
+          description: The time window for the volume history
+          schema:
+            type: string
+            enum: ["hour", "day", "week"]
+            example: "day"
+      responses:
+        "200":
+          description: Historical volume data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoolVolumeHistoryResponse"
+        "400":
+          description: AMM not found, invalid window, or cannot calculate USD volume
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /disclosures/{tokenA}/{tokenB}:
+    get:
+      summary: Get pool disclosures
+      description: |
+        Returns disclosed contract blobs for the pool's AMM, AMMFees, AMMRules, LP instrument config,
+        allocation factory, and featured app right contracts. These disclosures are required by clients
+        to submit transactions (swaps, deposits, withdrawals) against the pool.
+      operationId: getPoolDisclosures
+      tags:
+        - Pools
+      parameters:
+        - $ref: "#/components/parameters/tokenA"
+        - $ref: "#/components/parameters/tokenB"
+      responses:
+        "200":
+          description: Pool disclosures
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PoolDisclosuresResponse"
+        "404":
+          description: Pool not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /allocation-factory/{token}:
+    get:
+      summary: Get a token's allocation factory context
+      description: |
+        Returns the registry's allocation-factory contract for a token and the choice context
+        for exercising AllocationFactory_Allocate on it. Cached, refreshed every 24 hours.
+        CC/Amulet is not served. Read it from the Splice Scan API per submission.
+      operationId: getAllocationFactoryContext
+      tags:
+        - Tokens
+      parameters:
+        - $ref: "#/components/parameters/token"
+      responses:
+        "200":
+          description: Allocation factory context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllocationFactoryResponse"
+        "400":
+          description: The token is missing, malformed, unknown, or is CC/Amulet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: No context is available for this token right now.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  parameters:
+    tokenA:
+      name: tokenA
+      in: path
+      required: true
+      description: The name/symbol of the first token (URL encoded).
+      schema:
+        type: string
+        enum: ["CC", "USDCx", "CBTC", "cETH", "HANDL", "EDELx", "SBC"]
+        example: "CC"
+    tokenB:
+      name: tokenB
+      in: path
+      required: true
+      description: The name/symbol of the second token (URL encoded).
+      schema:
+        type: string
+        enum: ["CC", "USDCx", "CBTC", "cETH", "HANDL", "EDELx", "SBC"]
+        example: "USDCx"
+
+    token:
+      name: token
+      in: path
+      required: true
+      description: The name/symbol of the token (URL encoded).
+      schema:
+        type: string
+        example: "USDCx"
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "No AMM with id TC CC/USDC LP"
+
+    InstrumentId:
+      type: object
+      description: Unique identifier for a financial instrument.
+      required:
+        - admin
+        - id
+      properties:
+        admin:
+          type: string
+          description: The party administering the instrument
+          example: "party::admin123"
+        id:
+          type: string
+          description: The instrument identifier
+          example: "Amulet"
+
+    InstrumentInfo:
+      type: object
+      description: Extended information about a financial instrument.
+      required:
+        - instrument_id
+        - registry_url
+      properties:
+        instrument_id:
+          $ref: "#/components/schemas/InstrumentId"
+        registry_url:
+          type: string
+          format: uri
+          description: URL of the token registry
+          example: "https://registry.example.com"
+
+    TokenResponse:
+      type: object
+      description: Token information response.
+      required:
+        - instrument_id
+        - instrument_info
+      properties:
+        instrument_id:
+          $ref: "#/components/schemas/InstrumentId"
+        instrument_info:
+          $ref: "#/components/schemas/InstrumentInfo"
+
+    AmmIdResponse:
+      type: object
+      required:
+        - amm_id
+      properties:
+        amm_id:
+          type: string
+          description: The AMM pool identifier
+          example: "TC CC/USDCx LP"
+
+    AmmInspectResponse:
+      type: object
+      description: Detailed AMM pool state (V4 contract format).
+      required:
+        - total_lp_token_supply
+        - token_a_id
+        - token_a_holdings
+        - token_b_id
+        - token_b_holdings
+        - k
+        - unclaimed_operator_fees
+        - updated_at
+      properties:
+        total_lp_token_supply:
+          type: number
+          format: double
+          description: Total supply of LP tokens.
+          example: 1000.0
+        token_a_id:
+          type: string
+          description: Identifier for token A.
+          example: "CC"
+        token_a_holdings:
+          type: number
+          format: double
+          description: Amount of token A in the pool.
+          example: 5000.0
+        token_b_id:
+          type: string
+          description: Identifier for token B.
+          example: "USDCx"
+        token_b_holdings:
+          type: number
+          format: double
+          description: Amount of token B in the pool.
+          example: 10000.0
+        k:
+          type: number
+          format: double
+          description: The constant product (token_a_holdings * token_b_holdings).
+          example: 50000000.0
+        unclaimed_operator_fees:
+          type: number
+          format: double
+          description: Accumulated operator fees awaiting claim (V4).
+          example: 0.5
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp of the last pool operation (V4).
+          example: "2026-01-20T14:35:00Z"
+
+    PoolInfo:
+      type: object
+      required:
+        - token1
+        - token2
+        - lp_token_name
+        - token1_holdings
+        - token2_holdings
+        - total_lp_tokens
+        - lp_fee_percent
+        - operator_fee_percent
+      properties:
+        token1:
+          type: string
+          description: The symbol/code of the first token in the pool.
+          example: "CC"
+        token2:
+          type: string
+          description: The symbol/code of the second token in the pool.
+          example: "USDCx"
+        lp_token_name:
+          type: string
+          description: The liquidity pool token name/identifier.
+          example: "TC CC/USDCx LP"
+        token1_holdings:
+          type: number
+          format: double
+          description: Amount of token1 held in the pool.
+          example: 5000.0
+        token2_holdings:
+          type: number
+          format: double
+          description: Amount of token2 held in the pool.
+          example: 10000.0
+        total_lp_tokens:
+          type: number
+          format: double
+          description: Total supply of LP tokens for this pool.
+          example: 1000.0
+        lp_fee_percent:
+          type: number
+          format: double
+          description: Liquidity provider fee as a percentage (e.g., 0.3 means 0.3%).
+          example: 0.3
+        operator_fee_percent:
+          type: number
+          format: double
+          description: Operator fee as a percentage (e.g., 0.1 means 0.1%).
+          example: 0.1
+        yield24h:
+          type: number
+          format: double
+          nullable: true
+          description: 24-hour annualized yield (APY) for the pool. Null if unavailable.
+          example: 0.052
+
+    ListPoolsResponse:
+      type: object
+      required:
+        - pools
+      properties:
+        pools:
+          type: array
+          items:
+            $ref: "#/components/schemas/PoolInfo"
+          description: Array of pool information objects.
+          example:
+            - token1: "CC"
+              token2: "USDCx"
+              lp_token_name: "TC CC/USDCx LP"
+              token1_holdings: 5000.0
+              token2_holdings: 10000.0
+              total_lp_tokens: 1000.0
+              lp_fee_percent: 0.3
+              operator_fee_percent: 0.1
+              yield24h: 0.052
+
+    RatioResponse:
+      type: object
+      required:
+        - price_of_b_in_a
+      properties:
+        price_of_b_in_a:
+          type: number
+          format: double
+          description: The price of token B expressed in token A (tokenB_holdings / tokenA_holdings).
+          example: 2.0
+
+    FeeAmountResponse:
+      type: object
+      required:
+        - fee_amount
+        - operator_fee_amount
+      properties:
+        fee_amount:
+          type: number
+          format: double
+          description: Liquidity provider fee percentage.
+          example: 0.003
+        operator_fee_amount:
+          type: number
+          format: double
+          description: Operator fee percentage.
+          example: 0.001
+
+    TradeDiscountCapResponse:
+      type: object
+      required:
+        - trade_discount_cap_usd
+      properties:
+        trade_discount_cap_usd:
+          type: number
+          format: double
+          description: |
+            Maximum trade size, in USD, that still qualifies for the
+            fee discount. Trades at or below this size receive the reduced swap fee.
+          example: 1000.0
+
+    PhysicalSettlementWhitelistResponse:
+      type: object
+      required:
+        - physical_settlement_whitelist
+      properties:
+        physical_settlement_whitelist:
+          type: array
+          description: |
+            Token symbols the venue settles into a holding.
+            Swap output in any other token goes to the actor's trading balance.
+          items:
+            type: string
+          example: ["CBTC", "HANDL", "USDM1"]
+
+    QuoteTradeFixedInputResponse:
+      type: object
+      required:
+        - user_gets
+      properties:
+        user_gets:
+          type: number
+          format: double
+          description: The amount of output token the user will receive.
+          example: 49.5
+
+    QuoteTradeFixedOutputResponse:
+      type: object
+      required:
+        - user_gives
+      properties:
+        user_gives:
+          type: number
+          format: double
+          description: The amount of input token the user must provide.
+          example: 101.0
+
+    QuoteLPWithdrawalResponse:
+      type: object
+      required:
+        - amount_instrument_1
+        - amount_instrument_2
+      properties:
+        amount_instrument_1:
+          type: number
+          format: double
+          description: Amount of instrument 1 to receive.
+          example: 50.0
+        amount_instrument_2:
+          type: number
+          format: double
+          description: Amount of instrument 2 to receive.
+          example: 100.0
+
+    QuoteLPDepositResponse:
+      type: object
+      required:
+        - lp_tokens_to_mint
+        - instrument_1_to_deposit
+        - instrument_2_to_deposit
+      properties:
+        lp_tokens_to_mint:
+          type: number
+          format: double
+          description: Amount of LP tokens that will be minted.
+          example: 10.0
+        instrument_1_to_deposit:
+          type: number
+          format: double
+          description: Amount of instrument 1 required for deposit.
+          example: 100.0
+        instrument_2_to_deposit:
+          type: number
+          format: double
+          description: Amount of instrument 2 required for deposit.
+          example: 200.0
+
+    PoolYieldResponse:
+      type: object
+      required:
+        - pool_id
+        - yield
+      properties:
+        pool_id:
+          type: string
+          description: The AMM pool identifier
+          example: "TC CC/USDC LP"
+        yield:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          description: |
+            Map of time period labels to annualized percentage yield (APY) values.
+            Keys are time periods (1h, 4h, 12h, 1d, 2d, 3d, 7d, 14d, 30d).
+            Values are APY as decimals (e.g., 0.05 = 5% APY).
+            A value of 0 indicates insufficient data for that period.
+          example:
+            "1h": 0.0
+            "4h": 0.0
+            "12h": 0.0
+            "1d": 0.052
+            "7d": 0.048
+
+    PoolVolumeResponse:
+      type: object
+      required:
+        - pool_id
+        - volume_usd
+      properties:
+        pool_id:
+          type: string
+          description: The AMM pool identifier
+          example: "TC CC/USDCx LP"
+        volume_usd:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+          description: |
+            Map of time period labels to USD-denominated trading volume.
+            Keys are time periods (1h, 4h, 12h, 1d, 2d, 3d, 7d, 14d, 30d).
+            Values are the total swap volume in USD for that period.
+            USD conversion uses stablecoin rates (1:1) or CC exchange rate from Scan API.
+          example:
+            "1h": 150.0
+            "1d": 1500.0
+            "7d": 10000.0
+
+    PoolVolumeHistoryResponse:
+      type: object
+      required:
+        - pool_id
+        - window
+        - history
+      properties:
+        pool_id:
+          type: string
+          description: The AMM pool identifier
+          example: "TC CC/USDCx LP"
+        window:
+          type: string
+          description: The requested time window
+          enum: ["hour", "day", "week"]
+          example: "day"
+        history:
+          type: array
+          description: Array of timestamped volume data points, ordered from oldest to newest
+          items:
+            $ref: "#/components/schemas/VolumeHistoryDataPoint"
+
+    VolumeHistoryDataPoint:
+      type: object
+      required:
+        - timestamp
+        - volume_usd
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: The start of the time interval (RFC3339 format)
+          example: "2026-01-20T14:35:00Z"
+        volume_usd:
+          type: number
+          format: double
+          description: Trading volume in USD during this interval
+          example: 150.0
+
+    PoolYieldHistoryResponse:
+      type: object
+      required:
+        - pool_id
+        - window
+        - history
+      properties:
+        pool_id:
+          type: string
+          description: The AMM pool identifier
+          example: "TC CC/USDCx LP"
+        window:
+          type: string
+          description: The requested time window
+          enum: ["hour", "day", "week"]
+          example: "day"
+        history:
+          type: array
+          description: Array of timestamped APY data points, ordered from oldest to newest
+          items:
+            $ref: "#/components/schemas/YieldHistoryDataPoint"
+
+    YieldHistoryDataPoint:
+      type: object
+      required:
+        - timestamp
+        - apy
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: The start of the time interval (RFC3339 format)
+          example: "2026-01-20T14:35:00Z"
+        apy:
+          type: number
+          format: double
+          description: Annualized percentage yield during this interval (e.g., 0.05 = 5% APY)
+          example: 0.05
+
+    DisclosedContract:
+      type: object
+      description: A disclosed contract blob from the Canton ledger, required for submitting transactions.
+      required:
+        - templateId
+        - contractId
+        - createdEventBlob
+        - synchronizerId
+      properties:
+        templateId:
+          type: string
+          description: Fully qualified template identifier (packageId:moduleName:entityName)
+        contractId:
+          type: string
+          description: The contract ID on the ledger
+        createdEventBlob:
+          type: string
+          format: byte
+          description: Base64-encoded created event blob
+        synchronizerId:
+          type: string
+          description: The synchronizer (domain) ID where this contract lives
+
+    PoolDisclosuresResponse:
+      type: object
+      description: |
+        Disclosed contracts needed to submit transactions against this pool.
+        Includes the AMM, fees, rules, LP instrument config, allocation factory,
+        and optionally the featured app right contract.
+      required:
+        - amm
+        - amm_fees
+        - instrument_config
+        - allocation_factory
+        - amm_data
+        - amm_fees_data
+      properties:
+        amm:
+          $ref: "#/components/schemas/DisclosedContract"
+        amm_fees:
+          $ref: "#/components/schemas/DisclosedContract"
+        amm_rules:
+          $ref: "#/components/schemas/DisclosedContract"
+        instrument_config:
+          $ref: "#/components/schemas/DisclosedContract"
+        allocation_factory:
+          $ref: "#/components/schemas/DisclosedContract"
+        featured_app_right:
+          $ref: "#/components/schemas/DisclosedContract"
+        amm_data:
+          type: object
+          description: Parsed V4 AMM contract data
+        amm_fees_data:
+          type: object
+          description: Parsed V4 AMMFees contract data
+        amm_rules_data:
+          type: object
+          description: Parsed AMMRules contract data (if present)
+        featured_app_right_id:
+          type: string
+          nullable: true
+          description: Contract ID of the FeaturedAppRight (if present)
+
+    AllocationFactoryResponse:
+      type: object
+      description: The registry's allocation-factory contract and the context for exercising it.
+      required:
+        - factoryId
+        - choiceContext
+        - cachedAt
+      properties:
+        factoryId:
+          type: string
+          description: Contract ID to exercise AllocationFactory_Allocate on
+        choiceContext:
+          type: object
+          description: The registry's choice-context envelope, not a Daml ChoiceContext.
+          required:
+            - disclosedContracts
+            - choiceContextData
+          properties:
+            disclosedContracts:
+              type: array
+              description: Disclosures for the submission, not for ExtraArgs
+              items:
+                $ref: "#/components/schemas/DisclosedContract"
+            choiceContextData:
+              type: object
+              description: The Daml ChoiceContext to pass as ExtraArgs.context
+        cachedAt:
+          type: string
+          format: date-time
+          description: When this context was last fetched from the registry
+          example: "2026-01-20T14:35:00Z"
+
+tags:
+  - name: Health
+    description: Health check endpoints.
+  - name: Pools
+    description: Liquidity Pool information and listing.
+  - name: Tokens
+    description: Token and instrument information.
+  - name: Prices
+    description: Price and ratio queries.
+  - name: Fees
+    description: Fee information.
+  - name: Quotes
+    description: Trade quote calculations.
+  - name: Liquidity
+    description: Liquidity provider operations.
