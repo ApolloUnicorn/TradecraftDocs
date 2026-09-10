@@ -14,5 +14,5 @@
     spec:
       ref:
         kind: openapi
-        spec: tradecraft-amm-api-spec
+        spec: tradecraft
   ```
